@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Video Downloader</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type="text"], select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .formats {
+      margin-top: 20px;
+    }
+    .formats label {
+      font-weight: bold;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    .loading {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>YouTube Video Downloader</h1>
+    <input type="text" id="videoUrl" placeholder="Enter YouTube Video URL">
+    <button onclick="fetchVideoDetails()">Get Video Details</button>
+    <div id="details" style="display: none;">
+      <h2>Video Details</h2>
+      <p><strong>Title:</strong> <span id="videoTitle"></span></p>
+      <p><strong>Duration:</strong> <span id="videoDuration"></span> seconds</p>
+      <p><strong>View Count:</strong> <span id="videoViews"></span></p>
+      <div class="formats">
+        <label for="formatSelect">Available Formats:</label>
+        <select id="formatSelect"></select>
+      </div>
+      <button onclick="downloadVideo()">Download</button>
+    </div>
+    <p class="error" id="error"></p>
+    <div class="loading" id="loading" style="display: none;">Loading...</div>
+  </div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000";
+
+    async function fetchVideoDetails() {
+      const videoUrl = document.getElementById("videoUrl").value;
+      const errorDiv = document.getElementById("error");
+      const detailsDiv = document.getElementById("details");
+      const loadingDiv = document.getElementById("loading");
+
+      errorDiv.textContent = "";
+      detailsDiv.style.display = "none";
+      loadingDiv.style.display = "block";
+
+      try {
+        const response = await fetch(`${API_URL}/get_video_details`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: videoUrl })
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+
+        document.getElementById("videoTitle").textContent = data.title;
+        document.getElementById("videoDuration").textContent = data.duration;
+        document.getElementById("videoViews").textContent = data.view_count;
+
+        const formatSelect = document.getElementById("formatSelect");
+        formatSelect.innerHTML = "";
+        data.formats.forEach(format => {
+          const option = document.createElement("option");
+          option.value = format.format_id;
+          option.textContent = `${format.resolution} (${format.file_type})`;
+          formatSelect.appendChild(option);
+        });
+
+        detailsDiv.style.display = "block";
+      } catch (error) {
+        errorDiv.textContent = `Error fetching video details: ${error.message}`;
+      } finally {
+        loadingDiv.style.display = "none";
+      }
+    }
+
+    async function downloadVideo() {
+      const videoUrl = document.getElementById("videoUrl").value;
+      const formatId = document.getElementById("formatSelect").value;
+      const errorDiv = document.getElementById("error");
+
+      errorDiv.textContent = "";
+
+      try {
+        const response = await fetch(`${API_URL}/download_video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: videoUrl, format_id: formatId })
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+
+        alert(data.message);
+      } catch (error) {
+        errorDiv.textContent = `Error starting download: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
